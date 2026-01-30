@@ -556,6 +556,44 @@ class PathAddressing:
     def _create_sonic_yang_with_loaded_models(self):
         return self.config_wrapper.create_sonic_yang_with_loaded_models()
 
+    def _find_key_based_dependencies(self, path, config):
+        """
+        Manually scans the config for keys that reference the data at 'path'.
+        This addresses libyang3 not returning backlinks for list keys (used in leafrefs).
+        """
+        dependencies = []
+        path_tokens = self.get_path_tokens(path)
+
+        identifiers = set()
+        if len(path_tokens) == 2:
+            identifiers.add(path_tokens[1])
+        elif len(path_tokens) == 1:
+            table = path_tokens[0]
+            if table in config:
+                identifiers.update(config[table].keys())
+        else:
+            return []
+
+        if not identifiers:
+            return []
+
+        for table, items in config.items():
+            if not isinstance(items, dict):
+                continue
+            for key in items:
+                key_parts = key.split('|')
+                for part in key_parts:
+                    if part in identifiers:
+                        dep_path = self.create_path([table, key])
+                        if dep_path == path:
+                            continue
+                        if dep_path.startswith(path + "/"):
+                            continue
+                        dependencies.append(dep_path)
+                        break
+
+        return dependencies
+
     def find_ref_paths(self, paths, config, reload_config: bool = True):
         """
         Finds the paths referencing any line under the given 'path' within the given 'config'.
@@ -622,6 +660,10 @@ class PathAddressing:
             xpath = self.convert_path_to_xpath(path, config, sy)
             # NOTE: This will recursively find dependencies for all decendents
             ref_xpaths.extend(sy.find_data_dependencies(xpath))
+            for key_ref in self._find_key_based_dependencies(path, config):
+                if key_ref not in ref_paths_set:
+                    ref_paths.append(key_ref)
+                    ref_paths_set.add(key_ref)
 
         # For each xpath, convert to configdb path
         for ref_xpath in ref_xpaths:

@@ -2405,18 +2405,6 @@
             [
                 {
                     "op": "remove",
-                    "path": "/LOOPBACK_INTERFACE/Loopback0|10.1.0.32~132"
-                }
-            ],
-            [
-                {
-                    "op": "remove",
-                    "path": "/LOOPBACK_INTERFACE/Loopback0|1100:1::32~1128"
-                }
-            ],
-            [
-                {
-                    "op": "remove",
                     "path": "/LOOPBACK_INTERFACE"
                 }
             ],
