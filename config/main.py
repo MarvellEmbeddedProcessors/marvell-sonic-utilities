@@ -6942,6 +6942,11 @@ def add_vrrp_ip(ctx, interface_name, vrrp_id, ip_addr):
     """Add IPv4 address to the vrrp instance"""
     config_db = ctx.obj["config_db"]
 
+    # Check frr_mgmt_framework_config knob
+    device_metadata = config_db.get_entry('DEVICE_METADATA', 'localhost')
+    if not device_metadata or device_metadata.get('frr_mgmt_framework_config') != 'true':
+        ctx.fail("VRRP configuration requires frr_mgmt_framework_config to be true")
+
     if clicommon.get_interface_naming_mode() == "alias":
         interface_name = interface_alias_to_name(config_db, interface_name)
         if interface_name is None:
@@ -7276,6 +7281,11 @@ def add_vrrp(ctx, interface_name, vrrp_id):
     """Add vrrp instance to the interface"""
     config_db = ctx.obj["config_db"]
 
+    # Check frr_mgmt_framework_config knob
+    device_metadata = config_db.get_entry('DEVICE_METADATA', 'localhost')
+    if not device_metadata or device_metadata.get('frr_mgmt_framework_config') != 'true':
+        ctx.fail("VRRP configuration requires frr_mgmt_framework_config to be true")
+
     if clicommon.get_interface_naming_mode() == "alias":
         interface_name = interface_alias_to_name(config_db, interface_name)
         if interface_name is None:
@@ -7359,6 +7369,11 @@ def ipv6(ctx):
 def add_vrrp6_ipv6(ctx, interface_name, vrrp_id, ipv6_addr):
     """Add IPv6 address to the Vrrpv6 instance"""
     config_db = ctx.obj["config_db"]
+
+    # Check frr_mgmt_framework_config knob
+    device_metadata = config_db.get_entry('DEVICE_METADATA', 'localhost')
+    if not device_metadata or device_metadata.get('frr_mgmt_framework_config') != 'true':
+        ctx.fail("VRRP6 configuration requires frr_mgmt_framework_config to be true")
 
     if clicommon.get_interface_naming_mode() == "alias":
         interface_name = interface_alias_to_name(config_db, interface_name)
@@ -7674,6 +7689,11 @@ def pre_empt_v6(ctx, interface_name, vrrp_id, mode):
 def add_vrrp_v6(ctx, interface_name, vrrp_id):
     """Add Vrrpv6 instance to the interface"""
     config_db = ctx.obj["config_db"]
+
+    # Check frr_mgmt_framework_config knob
+    device_metadata = config_db.get_entry('DEVICE_METADATA', 'localhost')
+    if not device_metadata or device_metadata.get('frr_mgmt_framework_config') != 'true':
+        ctx.fail("VRRP6 configuration requires frr_mgmt_framework_config to be true")
 
     if clicommon.get_interface_naming_mode() == "alias":
         interface_name = interface_alias_to_name(config_db, interface_name)

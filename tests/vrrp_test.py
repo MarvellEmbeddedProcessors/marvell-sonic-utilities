@@ -10,6 +10,7 @@ import utilities_common.bgp_util as bgp_util
 
 class TestConfigVRRP(object):
     _old_run_bgp_command = None
+    _old_db_init = None
 
     @classmethod
     def setup_class(cls):
@@ -17,11 +18,23 @@ class TestConfigVRRP(object):
         cls._old_run_bgp_command = bgp_util.run_bgp_command
         bgp_util.run_bgp_command = mock.MagicMock(
             return_value=cls.mock_run_bgp_command())
+        cls._old_db_init = Db.__init__
+
+        def patched_db_init(db_self, *args, **kwargs):
+            cls._old_db_init(db_self, *args, **kwargs)
+            metadata = db_self.cfgdb.get_entry('DEVICE_METADATA', 'localhost')
+            metadata['frr_mgmt_framework_config'] = 'true'
+            db_self.cfgdb.set_entry('DEVICE_METADATA', 'localhost', metadata)
+
+        Db.__init__ = patched_db_init
         print("SETUP")
 
     @classmethod
     def teardown_class(cls):
-        bgp_util.run_bgp_command = cls._old_run_bgp_command
+        if cls._old_run_bgp_command is not None:
+            bgp_util.run_bgp_command = cls._old_run_bgp_command
+        if cls._old_db_init is not None:
+            Db.__init__ = cls._old_db_init
         print("TEARDOWN")
 
     ''' Tests for VRRPv4 and VRRPv6  '''
