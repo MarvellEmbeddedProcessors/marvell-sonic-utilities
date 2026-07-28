@@ -983,7 +983,7 @@ class TestStpInterfaceEnable:
     def test_stp_interface_enable_global_stp_disabled(self):
         """Test that enabling STP fails if global STP is disabled."""
 
-        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mstp"})
+        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mst"})
         self.runner.invoke = MagicMock(return_value=MagicMock(
             exit_code=1,
             output="Global STP is not enabled"
@@ -1006,7 +1006,7 @@ class TestStpInterfaceEnable:
     def test_stp_interface_enable_already_enabled(self):
         """Test that enabling STP fails if STP is already enabled for the interface."""
 
-        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mstp"})
+        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mst"})
         self.runner.invoke = MagicMock(return_value=MagicMock(
             exit_code=1,
             output="STP is already enabled for Ethernet2"
@@ -1052,10 +1052,10 @@ class TestStpInterfaceEnable:
     def test_stp_interface_enable_success_mstp(self):
         """Test that STP is successfully enabled for an interface in MSTP mode."""
 
-        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mstp"})
+        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mst"})
         self.runner.invoke = MagicMock(return_value=MagicMock(
             exit_code=0,
-            output="Mode mstp is enabled for interface Ethernet3"
+            output="Mode mst is enabled for interface Ethernet3"
         ))
 
         result = self.runner.invoke(
@@ -1070,7 +1070,7 @@ class TestStpInterfaceEnable:
         print(f"\nMocked Command Output:\n{actual_output}")
 
         assert result.exit_code == 0, "Command should have succeeded"
-        assert "mode mstp is enabled for interface ethernet3" in actual_output
+        assert "mode mst is enabled for interface ethernet3" in actual_output
 
     def test_stp_interface_enable_success_pvst(self):
         """Test that STP is successfully enabled for an interface in PVST mode."""
@@ -1107,7 +1107,7 @@ class TestStpInterfaceDisable:
     def test_stp_interface_disable_global_stp_disabled(self):
         """Test that disabling STP fails if global STP is not enabled."""
 
-        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mstp"})
+        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mst"})
         self.runner.invoke = MagicMock(return_value=MagicMock(
             exit_code=1,
             output="Global STP is not enabled"
@@ -1153,10 +1153,10 @@ class TestStpInterfaceDisable:
     def test_stp_interface_disable_success_mstp(self):
         """Test that STP is successfully disabled for an interface in MSTP mode."""
 
-        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mstp"})
+        self.db.cfgdb.get_entry = MagicMock(return_value={"mode": "mst"})
         self.runner.invoke = MagicMock(return_value=MagicMock(
             exit_code=0,
-            output="STP mode mstp is disabled for interface Ethernet3"
+            output="STP mode mst is disabled for interface Ethernet3"
         ))
 
         result = self.runner.invoke(
@@ -1171,7 +1171,7 @@ class TestStpInterfaceDisable:
         print(f"\nMocked Command Output:\n{actual_output}")
 
         assert result.exit_code == 0, "Command should have succeeded"
-        assert "stp mode mstp is disabled for interface ethernet3" in actual_output
+        assert "stp mode mst is disabled for interface ethernet3" in actual_output
 
     def test_stp_interface_disable_success_pvst(self):
         """Test that STP is successfully disabled for an interface in PVST mode."""
@@ -2155,7 +2155,7 @@ class TestStpInterfaceRootGuardDisable:
             "uplink_fast": "false"
         })
 
-    @patch('config.stp.get_global_stp_mode', return_value='mstp')
+    @patch('config.stp.get_global_stp_mode', return_value='mst')
     @patch('config.stp.check_if_interface_is_valid')
     def test_root_guard_disable_mstp(self, mock_check_valid, mock_get_mode):
         result = self.runner.invoke(
@@ -2215,7 +2215,7 @@ class TestStpInterfaceRootGuardEnable:
             "uplink_fast": "false"
         })
 
-    @patch('config.stp.get_global_stp_mode', return_value='mstp')
+    @patch('config.stp.get_global_stp_mode', return_value='mst')
     @patch('config.stp.check_if_interface_is_valid')
     def test_root_guard_enable_mstp(self, mock_check_valid, mock_get_mode):
         result = self.runner.invoke(
@@ -2276,7 +2276,7 @@ class TestStpInterfaceBpduGuardDisable:
             "uplink_fast": "false"
         })
 
-    @patch('config.stp.get_global_stp_mode', return_value='mstp')
+    @patch('config.stp.get_global_stp_mode', return_value='mst')
     @patch('config.stp.check_if_interface_is_valid')
     def test_bpdu_guard_disable_mstp(self, mock_check_valid, mock_get_mode):
         result = self.runner.invoke(
@@ -2338,7 +2338,7 @@ class TestStpInterfaceBpduGuardEnable:
             "uplink_fast": "false"
         })
 
-    @patch('config.stp.get_global_stp_mode', return_value='mstp')
+    @patch('config.stp.get_global_stp_mode', return_value='mst')
     @patch('config.stp.check_if_interface_is_valid')
     def test_bpdu_guard_enable_mstp_without_shutdown(self, mock_check_valid, mock_get_mode):
         result = self.runner.invoke(
@@ -2371,3 +2371,477 @@ class TestStpInterfaceBpduGuardEnable:
 
         assert result.exit_code != 0
         assert "Invalid interface" in result.output
+
+
+class TestStpConfigCoverage:
+    """Broad coverage of config/stp.py command branches (pvst/mst/none/invalid modes)."""
+
+    # Valid L2 access ports (VLAN1000 members, no IP, not PortChannel members)
+    L2_PORT = "Ethernet4"       # has STP_PORT enabled=true in mock config
+    L2_PORT_NO_STP = "Ethernet8"  # VLAN member but no STP_PORT entry
+
+    def setup_method(self):
+        os.environ['UTILITIES_UNIT_TESTING'] = "1"
+        self.runner = CliRunner()
+        self.db = Db()
+        self.st = config.config.commands["spanning-tree"]
+        # Ensure a VLAN with STP enabled exists and matches valid timer relationship
+        self.db.cfgdb.set_entry('STP_VLAN', 'Vlan1000', {
+            'enabled': 'true', 'forward_delay': '15',
+            'hello_time': '2', 'max_age': '20', 'priority': '32768'})
+
+    def _set_mode(self, mode):
+        if mode is None:
+            self.db.cfgdb.set_entry('STP', 'GLOBAL', {'mode': 'none'})
+        else:
+            self.db.cfgdb.set_entry('STP', 'GLOBAL', {
+                'mode': mode, 'forward_delay': '15', 'hello_time': '2',
+                'max_age': '20', 'priority': '32768', 'rootguard_timeout': '30'})
+
+    def _invoke(self, cmd, args):
+        return self.runner.invoke(cmd, args, obj=self.db)
+
+    # ---------- global enable / disable ----------
+    def test_enable_pvst_fresh(self):
+        self._set_mode(None)
+        r = self._invoke(self.st.commands["enable"], ["pvst"])
+        assert r.exit_code == 0
+
+    def test_enable_mst_fresh(self):
+        self._set_mode(None)
+        r = self._invoke(self.st.commands["enable"], ["mst"])
+        assert r.exit_code == 0
+
+    def test_enable_pvst_already_configured(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["enable"], ["pvst"])
+        assert r.exit_code != 0
+
+    def test_enable_mst_already_configured(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["enable"], ["mst"])
+        assert r.exit_code != 0
+
+    def test_enable_mst_when_pvst_configured(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["enable"], ["mst"])
+        assert r.exit_code != 0
+
+    def test_enable_pvst_when_mst_configured(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["enable"], ["pvst"])
+        assert r.exit_code != 0
+
+    def test_disable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["disable"], ["pvst"])
+        assert r.exit_code == 0
+
+    def test_disable_mst(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["disable"], ["mst"])
+        assert r.exit_code == 0
+
+    def test_disable_not_configured(self):
+        self._set_mode(None)
+        r = self._invoke(self.st.commands["disable"], ["pvst"])
+        assert r.exit_code != 0
+
+    def test_disable_wrong_mode(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["disable"], ["mst"])
+        assert r.exit_code != 0
+
+    # ---------- root_guard_timeout ----------
+    def test_root_guard_timeout_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["root_guard_timeout"], ["30"])
+        assert r.exit_code == 0
+
+    def test_root_guard_timeout_pvst_invalid(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["root_guard_timeout"], ["3"])
+        assert r.exit_code != 0
+
+    def test_root_guard_timeout_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["root_guard_timeout"], ["30"])
+        assert r.exit_code != 0
+
+    def test_root_guard_timeout_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["root_guard_timeout"], ["30"])
+        assert r.exit_code != 0
+
+    # ---------- forward_delay ----------
+    def test_forward_delay_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["forward_delay"], ["15"])
+        assert r.exit_code == 0
+
+    def test_forward_delay_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["forward_delay"], ["15"])
+        assert r.exit_code == 0
+
+    def test_forward_delay_invalid_value(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["forward_delay"], ["100"])
+        assert r.exit_code != 0
+
+    def test_forward_delay_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["forward_delay"], ["15"])
+        assert r.exit_code != 0
+
+    # ---------- hello ----------
+    def test_hello_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["hello"], ["2"])
+        assert r.exit_code == 0
+
+    def test_hello_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["hello"], ["2"])
+        assert r.exit_code == 0
+
+    def test_hello_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["hello"], ["2"])
+        assert r.exit_code != 0
+
+    # ---------- max_age ----------
+    def test_max_age_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["max_age"], ["20"])
+        assert r.exit_code == 0
+
+    def test_max_age_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["max_age"], ["20"])
+        assert r.exit_code == 0
+
+    def test_max_age_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["max_age"], ["20"])
+        assert r.exit_code != 0
+
+    # ---------- max_hops ----------
+    def test_max_hops_pvst_fail(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["max_hops"], ["20"])
+        assert r.exit_code != 0
+
+    def test_max_hops_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["max_hops"], ["20"])
+        assert r.exit_code == 0
+
+    def test_max_hops_mst_invalid(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["max_hops"], ["50"])
+        assert r.exit_code != 0
+
+    def test_max_hops_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["max_hops"], ["20"])
+        assert r.exit_code != 0
+
+    # ---------- global priority ----------
+    def test_priority_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["priority"], ["4096"])
+        assert r.exit_code == 0
+
+    def test_priority_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["priority"], ["4096"])
+        assert r.exit_code != 0
+
+    def test_priority_invalid_mode(self):
+        self._set_mode("rstp")
+        r = self._invoke(self.st.commands["priority"], ["4096"])
+        assert r.exit_code != 0
+
+    # ---------- mst region-name / revision ----------
+    def test_region_name_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["mst"].commands["region-name"], ["region1"])
+        assert r.exit_code == 0
+
+    def test_region_name_pvst_fail(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["mst"].commands["region-name"], ["region1"])
+        assert r.exit_code != 0
+
+    def test_region_name_too_long(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["mst"].commands["region-name"], ["x" * 40])
+        assert r.exit_code != 0
+
+    def test_revision_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["mst"].commands["revision"], ["100"])
+        assert r.exit_code == 0
+
+    def test_revision_pvst_fail(self):
+        self._set_mode("pvst")
+        r = self._invoke(self.st.commands["mst"].commands["revision"], ["100"])
+        assert r.exit_code != 0
+
+    def test_revision_out_of_range(self):
+        self._set_mode("mst")
+        r = self._invoke(self.st.commands["mst"].commands["revision"], ["70000"])
+        assert r.exit_code != 0
+
+    # ---------- vlan commands (pvst) ----------
+    def _vlan(self):
+        return self.st.commands["vlan"]
+
+    def test_vlan_enable_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["enable"], ["3000"])
+        assert r.exit_code == 0
+
+    def test_vlan_enable_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self._vlan().commands["enable"], ["3000"])
+        assert r.exit_code != 0
+
+    def test_vlan_disable_pvst_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["disable"], ["1000"])
+        assert r.exit_code == 0
+
+    def test_vlan_disable_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self._vlan().commands["disable"], ["1000"])
+        assert r.exit_code != 0
+
+    def test_vlan_forward_delay_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["forward_delay"], ["1000", "15"])
+        assert r.exit_code == 0
+
+    def test_vlan_forward_delay_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self._vlan().commands["forward_delay"], ["1000", "15"])
+        assert r.exit_code != 0
+
+    def test_vlan_hello_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["hello"], ["1000", "2"])
+        assert r.exit_code == 0
+
+    def test_vlan_max_age_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["max_age"], ["1000", "20"])
+        assert r.exit_code == 0
+
+    def test_vlan_priority_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._vlan().commands["priority"], ["1000", "4096"])
+        assert r.exit_code == 0
+
+    # ---------- vlan interface commands ----------
+    def test_vlan_interface_priority_ok(self):
+        self._set_mode("pvst")
+        cmd = self._vlan().commands["interface"].commands["priority"]
+        r = self._invoke(cmd, ["1000", self.L2_PORT, "128"])
+        assert r.exit_code == 0
+
+    def test_vlan_interface_cost_ok(self):
+        self._set_mode("pvst")
+        cmd = self._vlan().commands["interface"].commands["cost"]
+        r = self._invoke(cmd, ["1000", self.L2_PORT, "200"])
+        assert r.exit_code == 0
+
+    # ---------- interface commands ----------
+    def _intf(self):
+        return self.st.commands["interface"]
+
+    def test_interface_cost_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["cost"], [self.L2_PORT, "200"])
+        assert r.exit_code == 0
+
+    def test_interface_cost_mst_ok(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["cost"], [self.L2_PORT, "200"])
+        assert r.exit_code == 0
+
+    def test_interface_priority_ok(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["priority"], [self.L2_PORT, "128"])
+        assert r.exit_code == 0
+
+    def test_interface_portfast_enable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["portfast"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_portfast_enable_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["portfast"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code != 0
+
+    def test_interface_portfast_disable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["portfast"].commands["disable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_uplink_fast_enable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["uplink_fast"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_uplink_fast_enable_mst_fail(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["uplink_fast"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code != 0
+
+    def test_interface_uplink_fast_disable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["uplink_fast"].commands["disable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_link_type_p2p(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["link_type"].commands["point-to-point"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_link_type_shared(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["link_type"].commands["shared"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_link_type_auto_mst(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["link_type"].commands["auto"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_link_type_auto_pvst_fail(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["link_type"].commands["auto"], [self.L2_PORT])
+        assert r.exit_code != 0
+
+    def test_interface_link_type_set_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["link-type"].commands["set"], ["P2P", self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_link_type_set_mst(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["link-type"].commands["set"], ["Auto", self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_enable_pvst(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["enable"], [self.L2_PORT_NO_STP])
+        assert r.exit_code == 0
+
+    def test_interface_enable_mst(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["enable"], ["Ethernet12"])
+        assert r.exit_code == 0
+
+    def test_interface_enable_none_fail(self):
+        self._set_mode(None)
+        r = self._invoke(self._intf().commands["enable"], [self.L2_PORT_NO_STP])
+        assert r.exit_code != 0
+
+    def test_interface_edge_port_flag_enable_mst(self):
+        self._set_mode("mst")
+        r = self._invoke(self._intf().commands["edge_port"], ["enable", self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_edge_port_flag_pvst_fail(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["edge_port"], ["enable", self.L2_PORT])
+        assert r.exit_code != 0
+
+    def test_interface_bpdu_guard_enable(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["bpdu-guard"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_bpdu_guard_enable_shutdown(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["bpdu-guard"].commands["enable"], ["-s", self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_bpdu_guard_disable(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["bpdu-guard"].commands["disable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    def test_interface_root_guard_enable(self):
+        self._set_mode("pvst")
+        r = self._invoke(self._intf().commands["root_guard"].commands["enable"], [self.L2_PORT])
+        assert r.exit_code == 0
+
+    # ---------- mst instance commands ----------
+    def _mst_inst(self):
+        return self.st.commands["mst"].commands["instance"]
+
+    def test_mst_instance_interface_priority_ok(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["interface"].commands["priority"]
+        r = self._invoke(cmd, ["1", self.L2_PORT, "128"])
+        assert r.exit_code == 0
+
+    def test_mst_instance_interface_priority_bad_range(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["interface"].commands["priority"]
+        r = self._invoke(cmd, ["999", self.L2_PORT, "128"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_interface_cost_ok(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["interface"].commands["cost"]
+        r = self._invoke(cmd, ["1", self.L2_PORT, "200"])
+        assert r.exit_code == 0
+
+    def test_mst_instance_interface_cost_pvst_fail(self):
+        self._set_mode("pvst")
+        cmd = self._mst_inst().commands["interface"].commands["cost"]
+        r = self._invoke(cmd, ["1", self.L2_PORT, "200"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_priority_ok(self):
+        self._set_mode("mst")
+        self.db.cfgdb.set_entry('STP_MST_INST', 'MST_INSTANCE|1', {'bridge_priority': '32768'})
+        cmd = self._mst_inst().commands["priority"]
+        r = self._invoke(cmd, ["1", "4096"])
+        assert r.exit_code == 0
+
+    def test_mst_instance_priority_no_instance(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["priority"]
+        r = self._invoke(cmd, ["5", "4096"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_vlan_add_instance0_fail(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["vlan"].commands["add"]
+        r = self._invoke(cmd, ["0", "1000"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_vlan_del_instance0_fail(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["vlan"].commands["del"]
+        r = self._invoke(cmd, ["0", "1000"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_vlan_del_bad_range(self):
+        self._set_mode("mst")
+        cmd = self._mst_inst().commands["vlan"].commands["del"]
+        r = self._invoke(cmd, ["999", "1000"])
+        assert r.exit_code != 0
+
+    def test_mst_instance_vlan_add_ok(self):
+        self._set_mode("mst")
+        self.db.cfgdb.set_entry('STP_MST_INST', 'MST_INSTANCE|1', {'bridge_priority': '32768'})
+        cmd = self._mst_inst().commands["vlan"].commands["add"]
+        r = self._invoke(cmd, ["1", "1000"])
+        assert r.exit_code == 0
