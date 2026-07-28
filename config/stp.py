@@ -1370,7 +1370,6 @@ def stp_interface_enable(_db, interface_name):
         click.echo("No STP mode selected. Please select a mode first.")
         return
 
-    fvs = {'enabled': 'true'}
     db.set_entry('STP_PORT', interface_name, fvs)
     click.echo(f"Mode {current_mode} is enabled for interface {interface_name}")
 
@@ -1396,7 +1395,7 @@ def stp_interface_disable(_db, interface_name):
     if current_mode in ['mst', 'pvst']:
         db.set_entry('STP_PORT', interface_name, {'enabled': 'false'})
         click.echo(f"STP mode {current_mode} is disabled for {interface_name}")
-    else:
+    elif current_mode == 'none':
         # Allow clearing stp port setting even when STP is disabled globally
         stp_port_tbl = db.get_table('STP_PORT')
         if interface_name in stp_port_tbl:
@@ -1404,6 +1403,8 @@ def stp_interface_disable(_db, interface_name):
             click.echo(f"STP disabled for {interface_name}")
         else:
             click.echo(f"No STP_PORT entry for {interface_name}")
+    else:
+        ctx.fail(f"Invalid STP mode configuration: {current_mode}")
 
 
 # config spanning_tree interface edge_port {enable|disable} <ifname>
@@ -1454,7 +1455,7 @@ def stp_interface_bpdu_guard_enable(_db, interface_name, shutdown):
 
     if stp_mode == "pvst":
         fvs.update({'portfast': 'false', 'uplink_fast': 'false'})
-    elif stp_mode == "mstp":
+    elif stp_mode == "mst":
         fvs.update({'edge_port': 'false', 'link_type': 'auto'})
 
     db.mod_entry('STP_PORT', interface_name, fvs)
@@ -1473,7 +1474,7 @@ def stp_interface_bpdu_guard_disable(_db, interface_name):
 
     if stp_mode == "pvst":
         fvs.update({'portfast': 'false', 'uplink_fast': 'false'})
-    elif stp_mode == "mstp":
+    elif stp_mode == "mst":
         fvs.update({'edge_port': 'false', 'link_type': 'auto'})
 
     db.mod_entry('STP_PORT', interface_name, fvs)
@@ -1504,7 +1505,7 @@ def stp_interface_root_guard_enable(_db, interface_name):
     # Add mode-specific attributes
     if stp_mode == "pvst":
         fvs.update({'portfast': 'false', 'uplink_fast': 'false'})
-    elif stp_mode == "mstp":
+    elif stp_mode == "mst":
         fvs.update({'edge_port': 'false', 'link_type': 'auto'})
 
     db.mod_entry('STP_PORT', interface_name, fvs)
@@ -1531,7 +1532,7 @@ def stp_interface_root_guard_disable(_db, interface_name):
     # Add mode-specific attributes
     if stp_mode == "pvst":
         fvs.update({'portfast': 'false', 'uplink_fast': 'false'})
-    elif stp_mode == "mstp":
+    elif stp_mode == "mst":
         fvs.update({'edge_port': 'false', 'link_type': 'auto'})
 
     db.mod_entry('STP_PORT', interface_name, fvs)
@@ -1571,7 +1572,7 @@ def stp_interface_priority(_db, interface_name, priority_value):
 
     if stp_mode == "pvst":
         fvs.update({'portfast': 'false', 'uplink_fast': 'false'})
-    elif stp_mode == "mstp":
+    elif stp_mode == "mst":
         fvs.update({'edge_port': 'false', 'link_type': 'auto'})
 
     # Update the database entry
