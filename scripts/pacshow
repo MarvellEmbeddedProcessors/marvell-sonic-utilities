@@ -6,14 +6,14 @@
 
     root@sonic:/home/admin# sudo pacshow -t interface -a
 
-	Interface    Port-Control    Host-Mode    Pae-Role      Max-Users  Reauth      Reauth-Period  Reauth-from-Serer    config-methods    config-priority    enabled-methods    enabled-priority
+	Interface    Port-Control    Host-Mode    Pae-Role      Max-Users  Reauth      Reauth-Period  Reauth-from-Server    config-methods    config-priority    enabled-methods    enabled-priority
 	-----------  --------------  -----------  ----------  -----------  --------  ---------------  -------------------  ----------------  -----------------  -----------------  ------------------
 	Ethernet1    auto            multi-auth   none                 16  disabled               60  False                ['dot1x', 'mab']  none               none               none
 	Ethernet2    auto            multi-auth   none                 16  disabled               60  False                none              none               none               none
 
     root@sonic:/home/admin# sudo pacshow -t interface -i Ethernet1
 
-   Interface    Port-Control    Host-Mode    Pae-Role      Max-Users  Reauth      Reauth-Period  Reauth-from-Serer    config-methods    config-priority    enabled-methods    enabled-priority
+   Interface    Port-Control    Host-Mode    Pae-Role      Max-Users  Reauth      Reauth-Period  Reauth-from-Server    config-methods    config-priority    enabled-methods    enabled-priority
     -----------  --------------  -----------  ----------  -----------  --------  ---------------  -------------------  ----------------  -----------------  -----------------  ------------------
     Ethernet1    auto            multi-auth   none                 16  disabled               60  False                ['dot1x', 'mab']  none               none               none
 
@@ -235,7 +235,7 @@ class pacShow(object):
         """
             display interface related data.
         """
-        HEADER = ['Interface', 'Port-Control', 'Host-Mode', 'Pae-Role', 'Max-Users', 'Reauth', 'Reauth-Period', 'Reauth-from-Serer', 'config-methods', 'config-priority', 'enabled-methods', 'enabled-priority'] 
+        HEADER = ['Interface', 'Port-Control', 'Host-Mode', 'Pae-Role', 'Max-Users', 'Reauth', 'Reauth-Period', 'Reauth-from-Server', 'config-methods', 'config-priority', 'enabled-methods', 'enabled-priority'] 
         output = []
         for i in self.display_dict.keys():
             data = {}
