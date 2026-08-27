@@ -73,7 +73,7 @@ def pac_populate_dict(display_dict, port, config, oper):
         if i == "port_pae_role":
             display_dict[port]['port-role'] = config["port_pae_role"]
         if i == "reauth_enable":
-            display_dict[port]['reauth-enable'] = 'enabled' if True == config["reauth_enable"] else 'disabled'
+            display_dict[port]['reauth-enable'] = 'enabled' if config["reauth_enable"] in ("True", "true", True) else 'disabled'
         if i == "reauth_period":
             display_dict[port]['reauth-period'] = config["reauth_period"]
         if i == "reauth_period_from_server":
