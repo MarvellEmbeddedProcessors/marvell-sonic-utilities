@@ -9070,7 +9070,7 @@ def add_periodic(ctx, status, interface_name):
     config_db.connect()
 
     try:
-        config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_enable': True if status == 'enable' else False })
+        config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_enable': "true" if status == 'enable' else "false"})
 
     except ValueError as e:
         ctx.fail("Invalid ConfigDB. Error: {}".format(e))
@@ -9098,10 +9098,10 @@ def add_reauthperiod(ctx, status, interface_name):
             ctx.fail("Input not in range <1-65535>")
     try:
         if is_server:
-            config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_period_from_server': True})
+            config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_period_from_server': "true"})
         else:
             config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_period': val})
-            config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_period_from_server': False})
+            config_db.mod_entry('PAC_PORT_CONFIG_TABLE', (interface_name), {'reauth_period_from_server': "false"})
 
 
     except ValueError as e:
@@ -9178,7 +9178,7 @@ def add_mab(ctx, status, auth_type, interface_name):
     print(auth_type)
     print(interface_name)
     try:
-        config_db.mod_entry('MAB_PORT_CONFIG_TABLE', (interface_name), {'mab_enable': True if status == 'enable' else False})
+        config_db.mod_entry('MAB_PORT_CONFIG_TABLE', (interface_name), {'mab_enable': "true" if status == 'enable' else "false"})
         if auth_type == 'pap' or auth_type == 'chap':
             config_db.mod_entry('MAB_PORT_CONFIG_TABLE', (interface_name), {'mab_auth_type': auth_type})
         else:
