@@ -230,13 +230,11 @@ def authentication():
 def authentication_clear(interface, mac):
     if interface is None and mac is None:
         command = ['pacclear', '-a']
-        run_command(command)
     elif mac is not None:
-        command = ['pacclear', '-m  {}'.format(mac)]
-        run_command(command)
+        command = ['pacclear', '-m', mac]
     elif interface is not None:
-        command = ['pacclear', '-i {}'.format(interface)]
-        run_command(command)
+        command = ['pacclear', '-i', interface]
+    run_command(command)
 
 
 @cli.command()

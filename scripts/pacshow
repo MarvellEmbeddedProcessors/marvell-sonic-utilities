@@ -227,8 +227,7 @@ class pacShow(object):
             status = False
         else:
             status = self.display_dict['dot1x_system_auth_control']
-        print("802.1X admin mode : {}".format("Enabled" if status else  "Disabled"))
-
+        print("802.1X admin mode : {}".format("Enabled" if status in ("True", "true", True) else "Disabled"))
 
 
     def display_authentication_interface(self):

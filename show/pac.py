@@ -20,7 +20,7 @@ def authentication_interface(interface, verbose):
     """ Show authentication interface """
     if interface is not None:
         if interface.startswith("Ethernet"):
-            cmd = ['sudo', 'pacshow', '-t', 'interface', '-i {}'.format(interface)]
+            cmd = ['sudo', 'pacshow', '-t', 'interface', '-i',interface]
             clicommon.run_command(cmd, display_cmd=verbose)
     else:
         cmd = ['sudo', 'pacshow', '-t', 'interface', '-a']
@@ -30,11 +30,11 @@ def authentication_interface(interface, verbose):
 @authentication.command('clients')
 @click.option('-i', '--interface')
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
-def authentication_interface(interface, verbose):
-    """ Show authentication interface """
+def authentication_clients(interface, verbose):
+    """ Show authentication clients """
     if interface is not None:
         if interface.startswith("Ethernet"):
-            cmd = ['sudo', 'pacshow', '-t', 'client', '-i {}'.format(interface)]
+            cmd = ['sudo', 'pacshow', '-t', 'client', '-i',interface]
             clicommon.run_command(cmd, display_cmd=verbose)
     else:
         cmd = ['sudo', 'pacshow', '-t', 'client', '-a']
@@ -60,7 +60,7 @@ def mab_interface(interface, verbose):
     """ Show mab interface """
     if interface is not None:
         if interface.startswith("Ethernet"):
-            cmd = ['sudo', 'pacshow', '-t', 'mab', '-i {}'.format(interface)]
+            cmd = ['sudo', 'pacshow', '-t', 'mab', '-i',interface]
             clicommon.run_command(cmd, display_cmd=verbose)
     else:
         cmd = ['sudo', 'pacshow', '-t', 'mab', '-a']

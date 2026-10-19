@@ -23,7 +23,7 @@ def dot1x():
 @click.pass_context 
 @click.argument('status', metavar='<status>', required=True, type=click.Choice(['enable', 'disable'])) 
 def add_system_auth_control(ctx, status): 
-    """Add dot1x system-auth-control related  configutation""" 
+    """Add dot1x system-auth-control related  configuration""" 
  
     config_db = ValidatedConfigDBConnector(ConfigDBConnector()) 
     config_db.connect() 

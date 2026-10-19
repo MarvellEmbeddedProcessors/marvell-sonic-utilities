@@ -9004,7 +9004,7 @@ def authentication(ctx):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('control_mode', metavar='<control_mode>', required=True, type=click.Choice(['auto', 'force-authorized', 'force-unauthorized']))
 def add_portcontrol(ctx, control_mode, interface_name):
-    """Add port-control configutation"""
+    """Add port-control configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
@@ -9024,7 +9024,7 @@ def add_portcontrol(ctx, control_mode, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('host_mode', metavar='<host_mode>', required=True, type=click.Choice(['single-host', 'multi-host', 'multi-auth']))
 def add_hostmode(ctx, host_mode, interface_name):
-    """Add host-mode configutation"""
+    """Add host-mode configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
@@ -9043,8 +9043,8 @@ def add_hostmode(ctx, host_mode, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('max_users', metavar='<host_mode>', required=True, type=int)
 def add_maxusers(ctx, max_users, interface_name):
-    """Add max-users configutation"""
-    if max_users not in range(1, 16):
+    """Add max-users configuration"""
+    if max_users not in range(1, 17):
         ctx.fail("Given max_users {} is not allowed. Please enter a valid range <1-16>!!".format(max_users))
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
@@ -9064,7 +9064,7 @@ def add_maxusers(ctx, max_users, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('status', metavar='<status>', required=True, type=click.Choice(['enable', 'disable']))
 def add_periodic(ctx, status, interface_name):
-    """Add periodic authentication configutation"""
+    """Add periodic authentication configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
@@ -9083,7 +9083,7 @@ def add_periodic(ctx, status, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('status', metavar='<reauth_period>', required=True)
 def add_reauthperiod(ctx, status, interface_name):
-    """Add reauth-period configutation"""
+    """Add reauth-period configuration"""
 
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
@@ -9093,8 +9093,11 @@ def add_reauthperiod(ctx, status, interface_name):
     if status == 'server':
         is_server = True
     else:
-        val = int(status)
-        if val not in range(1,65535):
+        try:
+            val = int(status)
+        except ValueError:
+            ctx.fail("Reauth period must be 'server' or an integer in range <1-65535>")
+        if val not in range(1,65536):
             ctx.fail("Input not in range <1-65535>")
     try:
         if is_server:
@@ -9116,7 +9119,7 @@ def add_reauthperiod(ctx, status, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('order_list', metavar='<order_list>', required=True, type=click.Choice(['dot1x,mab', 'mab,dot1x', 'dot1x', 'mab']))
 def add_order(ctx, order_list, interface_name):
-    """Add order configutation"""
+    """Add order configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
@@ -9137,7 +9140,7 @@ def add_order(ctx, order_list, interface_name):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('priority_list', metavar='<priority_list>', required=True, type=click.Choice(['dot1x,mab', 'mab,dot1x', 'dot1x', 'mab']))
 def add_priority(ctx, priority_list, interface_name):
-    """Add priority configutation"""
+    """Add priority configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
@@ -9169,14 +9172,11 @@ def mab(ctx):
 @click.argument('status', metavar='<status>', required=True, type=click.Choice(['enable', 'disable']))
 @click.option('-a', '--auth-type', required=False, type=click.Choice(['eap-md5', 'pap', 'chap']))
 def add_mab(ctx, status, auth_type, interface_name):
-    """Add mab configutation"""
+    """Add mab configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
 
-    print(status)
-    print(auth_type)
-    print(interface_name)
     try:
         config_db.mod_entry('MAB_PORT_CONFIG_TABLE', (interface_name), {'mab_enable': "true" if status == 'enable' else "false"})
         if auth_type == 'pap' or auth_type == 'chap':
@@ -9250,7 +9250,7 @@ def dot1x(ctx):
 @click.argument('interface_name', metavar='<interface_name>', required=True)
 @click.argument('role', metavar='<role>', required=True, type=click.Choice(['authenticator', 'none']))
 def add_pae(ctx, role, interface_name):
-    """Add pae configutation"""
+    """Add pae configuration"""
 
     config_db = ValidatedConfigDBConnector(ConfigDBConnector())
     config_db.connect()
