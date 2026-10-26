@@ -579,7 +579,21 @@ def address ():
     mgmt_ip_data = config_db.get_table('MGMT_INTERFACE')
     for key in natsorted(list(mgmt_ip_data.keys())):
         click.echo("Management IP address = {0}".format(key[1]))
-        click.echo("Management Network Default Gateway = {0}".format(mgmt_ip_data[key]['gwaddr']))
+        gwaddr = mgmt_ip_data[key].get('gwaddr')
+        # A secondary address has no gateway of its own. Show the gateway
+        # stored on the primary address of the same family.
+        if not gwaddr and isinstance(key, tuple):
+            secondary_is_v6 = ':' in key[1]
+            for other, data in mgmt_ip_data.items():
+                if not isinstance(other, tuple) or other[0] != key[0]:
+                    continue
+                if (':' in other[1]) != secondary_is_v6:
+                    continue
+                if data.get('gwaddr'):
+                    gwaddr = data['gwaddr']
+                    break
+        if gwaddr:
+            click.echo("Management Network Default Gateway = {0}".format(gwaddr))
 
 #
 # 'snmpagentaddress' group ("show snmpagentaddress ...")

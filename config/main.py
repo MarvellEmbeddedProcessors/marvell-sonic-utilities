@@ -5758,18 +5758,35 @@ def add_interface_ip(ctx, interface_name, ip_addr, gw, secondary):
 
     if interface_name == 'eth0':
 
-        # Configuring more than 1 IPv4 or more than 1 IPv6 address fails.
-        # Allow only one IPv4 and only one IPv6 address to be configured for IPv6.
-        # If a row already exist, overwrite it (by doing delete and add).
+        # One primary address per family. A primary add replaces the current
+        # primary of that family and keeps its secondaries. --secondary adds
+        # another address of that family next to the primary.
+        if secondary and gw:
+            ctx.fail("A gateway cannot be set with --secondary on eth0; it is taken from the primary address")
+
         mgmtintf_key_list = _get_all_mgmtinterface_keys()
+        has_primary = False
 
         for key in mgmtintf_key_list:
-            # For loop runs for max 2 rows, once for IPv4 and once for IPv6.
-            # No need to capture the exception since the ip_addr is already validated earlier
             current_ip = ipaddress.ip_interface(key[1])
-            if (ip_address.version == current_ip.version):
-                # If user has configured IPv4/v6 address and the already available row is also IPv4/v6, delete it here.
-                config_db.set_entry("MGMT_INTERFACE", ("eth0", key[1]), None)
+            if ip_address.version != current_ip.version:
+                continue
+            entry = config_db.get_entry("MGMT_INTERFACE", key)
+            is_secondary = entry.get("secondary") == "true"
+            if not is_secondary:
+                has_primary = True
+            if secondary:
+                if current_ip.ip == ip_address.ip:
+                    ctx.fail("{} is already configured on eth0".format(ip_address.ip))
+            elif not is_secondary or current_ip.ip == ip_address.ip:
+                # Drop the old primary, and a secondary that holds the new primary address.
+                config_db.set_entry("MGMT_INTERFACE", key, None)
+
+        if secondary:
+            if not has_primary:
+                ctx.fail("Primary for the interface eth0 is not set, so skipping adding the interface")
+            config_db.set_entry("MGMT_INTERFACE", (interface_name, str(ip_address)), {"secondary": "true"})
+            return
 
         # Set the new row with new value
         if not gw:
@@ -5895,6 +5912,21 @@ def remove(ctx, interface_name, ip_addr):
         ctx.fail("IP address is not valid: {}".format(err))
 
     if interface_name == 'eth0':
+        # Secondary addresses are applied under the primary's stanza, so the
+        # primary of a family cannot be removed while secondaries remain.
+        mgmt_table = config_db.get_table("MGMT_INTERFACE")
+        removing = {}
+        for key, data in mgmt_table.items():
+            if key[0] == interface_name and str(ipaddress.ip_interface(key[1])) == str(ip_address):
+                removing = data
+                break
+        if removing and removing.get("secondary") != "true":
+            for key, data in mgmt_table.items():
+                other = ipaddress.ip_interface(key[1])
+                if (key[0] == interface_name and other.version == ip_address.version and
+                        data.get("secondary") == "true"):
+                    ctx.fail("Secondary address {} is configured on eth0; remove it before "
+                             "removing primary {}".format(other, ip_address))
         config_db.set_entry("MGMT_INTERFACE", (interface_name, str(ip_address)), None)
         return
 

@@ -591,3 +591,173 @@ class TestConfigIP(object):
     def teardown_class(cls):
         bgp_util.run_bgp_command = cls._old_run_bgp_command
         print("TEARDOWN")
+
+
+class TestConfigMgmtIP(object):
+    PRIMARY = ("eth0", "10.28.32.214/23")
+    SECONDARY = ("eth0", "10.28.32.110/23")
+    PRIMARY_V6 = ("eth0", "2603:10e2:0:2902::8/64")
+    SECONDARY_V6 = ("eth0", "2603:10e2:0:2902::9/64")
+
+    @classmethod
+    def setup_class(cls):
+        os.environ['UTILITIES_UNIT_TESTING'] = "1"
+
+    def _setup(self):
+        db = Db()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.PRIMARY, {"gwaddr": "10.28.32.1"})
+        return db, CliRunner(), {'config_db': db.cfgdb}
+
+    def _add(self, runner, obj, args):
+        cfgdb = obj['config_db']
+        with mock.patch("config.main._get_all_mgmtinterface_keys",
+                        side_effect=lambda: list(cfgdb.get_table("MGMT_INTERFACE").keys())):
+            return runner.invoke(config.config.commands["interface"].commands["ip"].commands["add"], args, obj=obj)
+
+    def _remove(self, runner, obj, args):
+        return runner.invoke(config.config.commands["interface"].commands["ip"].commands["remove"], args, obj=obj)
+
+    def test_add_secondary_keeps_primary(self):
+        db, runner, obj = self._setup()
+        result = self._add(runner, obj, ["eth0", self.SECONDARY[1], "--secondary"])
+        assert result.exit_code == 0, result.output
+        table = db.cfgdb.get_table("MGMT_INTERFACE")
+        assert table[self.PRIMARY] == {"gwaddr": "10.28.32.1"}
+        assert table[self.SECONDARY] == {"secondary": "true"}
+
+    def test_add_secondary_duplicate_host_rejected(self):
+        db, runner, obj = self._setup()
+        result = self._add(runner, obj, ["eth0", "10.28.32.214/24", "--secondary"])
+        assert result.exit_code != 0
+        assert "already configured on eth0" in result.output
+        assert ("eth0", "10.28.32.214/24") not in db.cfgdb.get_table("MGMT_INTERFACE")
+
+    def test_add_secondary_without_primary_rejected(self):
+        db = Db()
+        runner = CliRunner()
+        result = self._add(runner, {'config_db': db.cfgdb}, ["eth0", self.SECONDARY[1], "--secondary"])
+        assert result.exit_code != 0
+        assert "Primary for the interface eth0 is not set" in result.output
+        assert self.SECONDARY not in db.cfgdb.get_table("MGMT_INTERFACE")
+
+    def test_add_secondary_with_gateway_rejected(self):
+        db, runner, obj = self._setup()
+        result = self._add(runner, obj, ["eth0", self.SECONDARY[1], "10.28.32.1", "--secondary"])
+        assert result.exit_code != 0
+        assert "A gateway cannot be set with --secondary" in result.output
+        assert self.SECONDARY not in db.cfgdb.get_table("MGMT_INTERFACE")
+
+    def test_replace_primary_keeps_secondary(self):
+        db, runner, obj = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.SECONDARY, {"secondary": "true"})
+        result = self._add(runner, obj, ["eth0", "10.28.32.215/23", "10.28.32.1"])
+        assert result.exit_code == 0, result.output
+        table = db.cfgdb.get_table("MGMT_INTERFACE")
+        assert self.PRIMARY not in table
+        assert table[("eth0", "10.28.32.215/23")] == {"gwaddr": "10.28.32.1"}
+        assert table[self.SECONDARY] == {"secondary": "true"}
+
+    def test_remove_primary_with_secondary_rejected(self):
+        db, runner, obj = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.SECONDARY, {"secondary": "true"})
+        result = self._remove(runner, obj, ["eth0", self.PRIMARY[1]])
+        assert result.exit_code != 0
+        assert "remove it before removing primary" in result.output
+        assert self.PRIMARY in db.cfgdb.get_table("MGMT_INTERFACE")
+
+        result = self._remove(runner, obj, ["eth0", self.SECONDARY[1]])
+        assert result.exit_code == 0, result.output
+        result = self._remove(runner, obj, ["eth0", self.PRIMARY[1]])
+        assert result.exit_code == 0, result.output
+        assert db.cfgdb.get_table("MGMT_INTERFACE") == {}
+
+    def test_show_mgmt_address_secondary_uses_primary_gateway(self):
+        db, runner, _ = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.SECONDARY, {"secondary": "true"})
+        result = self._show(runner, db)
+        assert result.exit_code == 0, result.output
+        assert result.output == (
+            "Management IP address = 10.28.32.110/23\n"
+            "Management Network Default Gateway = 10.28.32.1\n"
+            "Management IP address = 10.28.32.214/23\n"
+            "Management Network Default Gateway = 10.28.32.1\n"
+        )
+
+    def _show(self, runner, db):
+        mock_db = mock.Mock(get_table=lambda table: db.cfgdb.get_table(table))
+        with mock.patch("show.main.ConfigDBConnector", return_value=mock_db):
+            return runner.invoke(show.cli.commands["management_interface"].commands["address"], [])
+
+    def test_add_ipv6_secondary(self):
+        db, runner, obj = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.PRIMARY_V6, {"gwaddr": "2603:10e2:0:2902::1"})
+        result = self._add(runner, obj, ["eth0", self.SECONDARY_V6[1], "--secondary"])
+        assert result.exit_code == 0, result.output
+        table = db.cfgdb.get_table("MGMT_INTERFACE")
+        assert table[self.PRIMARY] == {"gwaddr": "10.28.32.1"}
+        assert table[self.PRIMARY_V6] == {"gwaddr": "2603:10e2:0:2902::1"}
+        assert table[self.SECONDARY_V6] == {"secondary": "true"}
+
+        # The IPv6 secondary shows the IPv6 primary's gateway, not the IPv4 one
+        result = self._show(runner, db)
+        assert result.exit_code == 0, result.output
+        assert ("Management IP address = 2603:10e2:0:2902::9/64\n"
+                "Management Network Default Gateway = 2603:10e2:0:2902::1\n") in result.output
+
+    def test_add_ipv6_secondary_with_only_ipv4_primary_rejected(self):
+        db, runner, obj = self._setup()
+        result = self._add(runner, obj, ["eth0", self.SECONDARY_V6[1], "--secondary"])
+        assert result.exit_code != 0
+        assert "Primary for the interface eth0 is not set" in result.output
+        assert self.SECONDARY_V6 not in db.cfgdb.get_table("MGMT_INTERFACE")
+
+    def test_add_multiple_secondaries(self):
+        db, runner, obj = self._setup()
+        second = ("eth0", "10.28.32.111/23")
+        other_subnet = ("eth0", "10.29.0.5/24")
+        for entry in (self.SECONDARY, second, other_subnet):
+            result = self._add(runner, obj, ["eth0", entry[1], "--secondary"])
+            assert result.exit_code == 0, result.output
+        table = db.cfgdb.get_table("MGMT_INTERFACE")
+        assert table[self.PRIMARY] == {"gwaddr": "10.28.32.1"}
+        for entry in (self.SECONDARY, second, other_subnet):
+            assert table[entry] == {"secondary": "true"}
+
+    def test_add_primary_equal_to_existing_secondary(self):
+        db, runner, obj = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.SECONDARY, {"secondary": "true"})
+        result = self._add(runner, obj, ["eth0", self.SECONDARY[1], "10.28.32.1"])
+        assert result.exit_code == 0, result.output
+        # The old primary is replaced and the address is now the primary, not a secondary
+        assert db.cfgdb.get_table("MGMT_INTERFACE") == {self.SECONDARY: {"gwaddr": "10.28.32.1"}}
+
+    def test_remove_only_secondary(self):
+        db, runner, obj = self._setup()
+        db.cfgdb.set_entry("MGMT_INTERFACE", self.SECONDARY, {"secondary": "true"})
+        result = self._remove(runner, obj, ["eth0", self.SECONDARY[1]])
+        assert result.exit_code == 0, result.output
+        assert db.cfgdb.get_table("MGMT_INTERFACE") == {self.PRIMARY: {"gwaddr": "10.28.32.1"}}
+
+    def test_primary_without_gateway_then_secondary(self):
+        db = Db()
+        runner = CliRunner()
+        obj = {'config_db': db.cfgdb}
+        result = self._add(runner, obj, ["eth0", self.PRIMARY[1]])
+        assert result.exit_code == 0, result.output
+        assert self.PRIMARY in db.cfgdb.get_table("MGMT_INTERFACE")
+        assert "gwaddr" not in db.cfgdb.get_table("MGMT_INTERFACE")[self.PRIMARY]
+
+        result = self._show(runner, db)
+        assert result.exit_code == 0, result.output
+        assert result.output == "Management IP address = 10.28.32.214/23\n"
+
+        result = self._add(runner, obj, ["eth0", self.SECONDARY[1], "--secondary"])
+        assert result.exit_code == 0, result.output
+        assert db.cfgdb.get_table("MGMT_INTERFACE")[self.SECONDARY] == {"secondary": "true"}
+
+        result = self._show(runner, db)
+        assert result.exit_code == 0, result.output
+        assert result.output == (
+            "Management IP address = 10.28.32.110/23\n"
+            "Management IP address = 10.28.32.214/23\n"
+        )
