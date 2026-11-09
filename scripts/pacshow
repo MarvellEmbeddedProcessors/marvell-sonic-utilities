@@ -59,8 +59,36 @@ import sys
 from tabulate import tabulate
 from swsscommon.swsscommon import ConfigDBConnector, SonicV2Connector
 
+PAC_UNSET = 'none'
+
+
+def pac_format_list_value(value):
+    if value is None:
+        return PAC_UNSET
+    if isinstance(value, list):
+        if not value:
+            return PAC_UNSET
+        parts = []
+        for item in value:
+            if isinstance(item, str) and ',' in item:
+                parts.extend(p.strip() for p in item.split(',') if p.strip())
+            elif item is not None and str(item).strip():
+                parts.append(str(item).strip())
+        return ','.join(parts) if parts else PAC_UNSET
+    text = str(value).strip()
+    return text if text else PAC_UNSET
+
+
+def pac_format_display_value(value):
+    if value is None:
+        return PAC_UNSET
+    if isinstance(value, list):
+        return pac_format_list_value(value)
+    return value
+
+
 def pac_populate_dict(display_dict, port, config, oper):
-	
+
     display_dict[port] = {}
     for i in config.keys():
         if i == "port_control_mode":
@@ -79,38 +107,38 @@ def pac_populate_dict(display_dict, port, config, oper):
         if i == "reauth_period_from_server":
             display_dict[port]['reauthperiod-from-server'] = config["reauth_period_from_server"]
         if i == "method_list":
-            display_dict[port]['config-methods'] = config["method_list"]
+            display_dict[port]['config-methods'] = pac_format_list_value(config["method_list"])
         if i == "priority_list":
-            display_dict[port]['config-priority'] = config["priority_list"]
+            display_dict[port]['config-priority'] = pac_format_list_value(config["priority_list"])
 
-    display_dict[port]['enabled-methods'] = ['none']
-    display_dict[port]['enabled-priority'] = ['none']
-    
+    display_dict[port]['enabled-methods'] = PAC_UNSET
+    display_dict[port]['enabled-priority'] = PAC_UNSET
+
     if oper:
         for i in oper.keys():
-            if i == "enabled_method_list@": 
-                display_dict[port]['enabled-methods'] = oper["enabled_method_list@"]
+            if i == "enabled_method_list@":
+                display_dict[port]['enabled-methods'] = pac_format_list_value(oper["enabled_method_list@"])
             if i == "enabled_priority_list@":
-                display_dict[port]['enabled-priority'] = oper["enabled_priority_list@"]
+                display_dict[port]['enabled-priority'] = pac_format_list_value(oper["enabled_priority_list@"])
 
     if 'port-control' not in display_dict[port].keys():
-        display_dict[port]['port-control'] = 'none'
+        display_dict[port]['port-control'] = PAC_UNSET
     if 'host-control' not in display_dict[port].keys():
-        display_dict[port]['host-control'] = 'none'
+        display_dict[port]['host-control'] = PAC_UNSET
     if 'max-users' not in display_dict[port].keys():
-        display_dict[port]['max-users'] = '16'
+        display_dict[port]['max-users'] = PAC_UNSET
     if 'port-role' not in display_dict[port].keys():
-        display_dict[port]['port-role'] = 'none'
+        display_dict[port]['port-role'] = PAC_UNSET
     if 'reauth-enable' not in display_dict[port].keys():
-        display_dict[port]['reauth-enable'] = 'disabled'
+        display_dict[port]['reauth-enable'] = PAC_UNSET
     if 'reauth-period' not in display_dict[port].keys():
-        display_dict[port]['reauth-period'] = '60'
+        display_dict[port]['reauth-period'] = PAC_UNSET
     if 'reauthperiod-from-server' not in display_dict[port].keys():
-        display_dict[port]['reauthperiod-from-server'] = False
+        display_dict[port]['reauthperiod-from-server'] = PAC_UNSET
     if 'config-methods' not in display_dict[port].keys():
-        display_dict[port]['config-methods'] = ['dot1x', 'mab']
+        display_dict[port]['config-methods'] = PAC_UNSET
     if 'config-priority' not in display_dict[port].keys():
-        display_dict[port]['config-priority'] = ['dot1x', 'mab']
+        display_dict[port]['config-priority'] = PAC_UNSET
 
 
 
@@ -239,7 +267,12 @@ class pacShow(object):
         for i in self.display_dict.keys():
             data = {}
             data = self.display_dict[i]
-            output.append([i, data['port-control'], data['host-control'], data['port-role'], data['max-users'], data['reauth-enable'], data['reauth-period'], data['reauthperiod-from-server'], ','.join(data['config-methods']), ','.join(data['config-priority']), data['enabled-methods'], data['enabled-priority']])
+            output.append([i, data['port-control'], data['host-control'], data['port-role'], data['max-users'],
+                           data['reauth-enable'], data['reauth-period'], data['reauthperiod-from-server'],
+                           pac_format_display_value(data['config-methods']),
+                           pac_format_display_value(data['config-priority']),
+                           pac_format_display_value(data['enabled-methods']),
+                           pac_format_display_value(data['enabled-priority'])])
         print("")
         print(tabulate(output, HEADER))
         print("")
@@ -283,13 +316,10 @@ class pacShow(object):
         output = []
         sorted_keys = sorted(self.display_dict.keys())
         for i in sorted_keys:
-            if 'mab_enable' not in self.display_dict[i].keys():
-                self.display_dict[i]['mab_enable'] = False
-                continue
-
-            if 'mab_auth_type' not in self.display_dict[i].keys():
-                self.display_dict[i]['mab_auth_type'] = 'eap-md5'
-            output.append([i, self.display_dict[i]['mab_enable'], self.display_dict[i]['mab_auth_type']])
+            row = self.display_dict[i]
+            mab_enable = row['mab_enable'] if 'mab_enable' in row else PAC_UNSET
+            mab_auth_type = row['mab_auth_type'] if 'mab_auth_type' in row else PAC_UNSET
+            output.append([i, mab_enable, mab_auth_type])
         print("")
         print(tabulate(output, HEADER))
         print("")
