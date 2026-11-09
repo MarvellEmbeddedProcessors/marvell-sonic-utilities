@@ -225,14 +225,17 @@ def authentication():
 
 
 @authentication.command('sessions')
+@click.pass_context
 @click.option('-i', '--interface')
 @click.option('-m', '--mac')
-def authentication_clear(interface, mac):
+def authentication_clear(ctx, interface, mac):
+    if interface is not None and mac is not None:
+        ctx.fail("Cannot specify both -i/--interface and -m/--mac")
     if interface is None and mac is None:
         command = ['pacclear', '-a']
     elif mac is not None:
         command = ['pacclear', '-m', mac]
-    elif interface is not None:
+    else:
         command = ['pacclear', '-i', interface]
     run_command(command)
 
