@@ -122,13 +122,19 @@ class FdbShow(object):
             br_port_id = ent["SAI_FDB_ENTRY_ATTR_BRIDGE_PORT_ID"][oid_pfx:]
             ent_type = ent["SAI_FDB_ENTRY_ATTR_TYPE"]
             fdb_type = ['Dynamic','Static'][ent_type == "SAI_FDB_ENTRY_TYPE_STATIC"]
-            if br_port_id not in self.if_br_oid_map:
-                continue
-            port_id = self.if_br_oid_map[br_port_id]
-            if port_id in self.if_oid_map:
-                if_name = self.if_oid_map[port_id]
+            # VXLAN remote MACs carry the remote VTEP IP in ENDPOINT_IP and use
+            # a tunnel bridge port (not in if_br_oid_map): show the VTEP IP.
+            endpoint_ip = ent.get("SAI_FDB_ENTRY_ATTR_ENDPOINT_IP")
+            if endpoint_ip:
+                if_name = endpoint_ip
             else:
-                if_name = port_id
+                if br_port_id not in self.if_br_oid_map:
+                    continue
+                port_id = self.if_br_oid_map[br_port_id]
+                if port_id in self.if_oid_map:
+                    if_name = self.if_oid_map[port_id]
+                else:
+                    if_name = port_id
             if 'vlan' in fdb:
                 vlan_id = fdb["vlan"]
             else:
